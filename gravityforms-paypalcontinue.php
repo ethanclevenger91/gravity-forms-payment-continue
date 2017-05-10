@@ -20,7 +20,7 @@ class GravityFormsPayPalContinue extends GFAddOn {
 	 * @access protected
 	 * @var    string $_min_gravityforms_version The minimum version required.
 	 */
-	protected $_min_gravityforms_version = '1.9';
+	protected $_min_gravityforms_version = '2.2';
 
 	/**
 	 * Defines the plugin slug.
@@ -95,20 +95,32 @@ class GravityFormsPayPalContinue extends GFAddOn {
 
 	}
 
-	public function init() {
-	  parent::init();
-	  if(class_exists('GFPayPal')) {
-		add_action('gform_entry_detail_meta_boxes', array( $this, 'register_meta_box' ), 10, 3 );
-	  } else {
-		add_action('admin_notices', [$this, 'admin_notice']);
-	  }
+	/**
+	 * Define minimum requirements needed to run Gravity Forms PayPal Standard Continue.
+	 *
+	 * @since  1.0
+	 * @access public
+	 *
+	 * @return array
+	 */
+	public function minimum_requirements() {
+
+		return array( 'add-ons' => array( 'gravityformspaypal' ) );
+
 	}
 
-	public function admin_notice() {
-	  $class = 'notice notice-warning';
-		$message = __( 'The Gravity Forms PayPal Standard Continue URL plugin requires the Gravity Forms PayPal Standard plugin to be activated.', 'sample-text-domain' );
+	/**
+	 * Register needed admin hooks.
+	 *
+	 * @since  1.0
+	 * @access public
+	 */
+	public function init_admin() {
 
-		printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), esc_html( $message ) );
+		parent::init_admin();
+
+		add_action('gform_entry_detail_meta_boxes', array( $this, 'register_meta_box' ), 10, 3 );
+
 	}
 
 	public function register_meta_box($meta_boxes, $entry, $form) {
