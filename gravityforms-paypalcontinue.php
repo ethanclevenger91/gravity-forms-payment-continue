@@ -123,28 +123,84 @@ class GravityFormsPayPalContinue extends GFAddOn {
 
 	}
 
+	/**
+	 * Add meta box to the entry detail page.
+	 *
+	 * @since  1.0
+	 * @access public
+	 *
+	 * @param array $meta_boxes The properties for the meta boxes.
+	 * @param array $entry      The entry currently being viewed/edited.
+	 * @param array $form       The form object used to process the current entry.
+	 *
+	 * @uses GFFeedAddOn::get_active_feeds()
+	 *
+	 * @return array
+	 */
 	public function register_meta_box($meta_boxes, $entry, $form) {
-		$paymentAddon = new GFPayPal();
-	  $payment_status = apply_filters( 'gform_payment_status', $entry['payment_status'], $form, $entry );
-	  if($paymentAddon->get_active_feeds($form['id']) && $payment_status == 'Processing') {
-		$meta_boxes[ 'paypal_continue_url' ] = array(
-			'title'	   => 'PayPal URL to Finish Payment',
-			'callback' => array( $this, 'add_details_meta_box' ),
-			'context'  => 'side',
-		);
-	  }
-	  return $meta_boxes;
+
+		// Get instance of PayPal Add-On.
+		$paypal = gf_paypal();
+		
+		// Get payment status.
+		$payment_status = apply_filters( 'gform_payment_status', $entry['payment_status'], $form, $entry );
+
+		// If active feeds were found and payment status is processing, display meta box.
+		if ( $paypal->get_active_feeds( $form['id'] ) && 'Processing' === $payment_status ) {
+
+			$meta_boxes[ 'paypal_continue_url' ] = array(
+				'title'	   => 'PayPal URL to Finish Payment',
+				'callback' => array( $this, 'add_details_meta_box' ),
+				'context'  => 'side',
+			);
+
+		}
+
+		return $meta_boxes;
+
 	}
 
-	function add_details_meta_box($args) {
-	  $form = $args['form'];
-	  $entry = $args['entry'];
-	  GFForms::include_payment_addon_framework();
-	  $paymentAddon = new GFPayPal();
-	  $feed = $paymentAddon->get_single_submission_feed($entry, $form);
-	  $submissionData = $paymentAddon->get_submission_data($feed, $form, $entry);
-	  $url = $paymentAddon->redirect_url( $feed, $submissionData, $form, $entry );
-	  $html = '<a target="_blank" href="'.$url.'">Send this link to the customer!</a>';
-	  echo $html;
+	/**
+	 * Display entry meta box.
+	 *
+	 * @since  1.0
+	 * @access public
+	 *
+	 * @param array $args An array containing the form and entry objects.
+	 *
+	 * @uses GFForms::include_payment_addon_framework()
+	 * @uses GFFeedAddOn::get_single_submission_feed()
+	 * @uses GFPaymentAddOn::get_single_submission_feed()
+	 * @uses GFPayPal::redirect_url()
+	 */
+	public function add_details_meta_box( $args ) {
+		
+		// Get form and entry.
+		$form  = $args['form'];
+		$entry = $args['entry'];
+
+		// Include Payment Add-On Framework.
+		GFForms::include_payment_addon_framework();
+
+		// Get instance of PayPal Add-On.
+		$paypal = gf_paypal();
+
+		// Get feed for entry.
+		$feed = $paypal->get_single_submission_feed( $entry, $form );
+
+		// Get submission data for feed.
+		$submission_data = $paypal->get_submission_data( $feed, $form, $entry );
+
+		// Get redirect URL.
+		$url = $paypal->redirect_url( $feed, $submission_data, $form, $entry );
+
+		// Display link.
+		printf(
+			'<a target="_blank" href="%s">%s</a>',
+			esc_url( $url ),
+			'Send this link to the customer!'
+		);
+
 	}
+
 }
