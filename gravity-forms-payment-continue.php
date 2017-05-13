@@ -1,6 +1,7 @@
 <?php
 
 GFForms::include_addon_framework();
+GFForms::include_payment_addon_framework();
 
 class GravityFormsPaymentContinue extends GFAddOn {
 
@@ -80,10 +81,19 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	 * Defines the merge tag used for this Add-On.
 	 *
 	 * @since  1.0
-	 * @access protected
-	 * @var    string $_merge_tag The merge tag.
+	 * @access private
+	 * @var    string $merge_tag The merge tag.
 	 */
-	protected static $_merge_tag = '{payment_url}';
+	private $merge_tag = '{payment_url}';
+
+	/**
+	 * Holds the GFPaymentAddon currently active. Populated by load_gateway
+	 *
+	 * @since  1.1
+	 * @access private
+	 * @var    object $gateway The GFPaymentAddon.
+	 */
+	private $gateway = null;
 
 	/**
 	 * Get instance of this class.
@@ -128,6 +138,8 @@ class GravityFormsPaymentContinue extends GFAddOn {
 
 		parent::init_admin();
 
+		$this->load_gateway();
+
 		add_action('gform_entry_detail_meta_boxes', array( $this, 'register_meta_box' ), 10, 3 );
 
 		add_filter('gform_admin_pre_render', array( $this, 'add_merge_tags') );
@@ -145,8 +157,24 @@ class GravityFormsPaymentContinue extends GFAddOn {
 
 		parent::init();
 
+		$this->load_gateway();
+
 		add_filter('gform_replace_merge_tags', array( $this, 'replace_merge_tags' ), 10, 3);
 
+	}
+
+	/**
+	 * Assign active GFPaymentAddon
+	 *
+	 * @since  1.1
+	 * @access public
+	 *
+	 * @uses gf_paypal()
+	 */
+	public function load_gateway() {
+		// Get instance of PayPal Add-On.
+		// Eventually this will be a conditional
+		$this->gateway = gf_paypal();
 	}
 
 	/**
@@ -164,7 +192,7 @@ class GravityFormsPaymentContinue extends GFAddOn {
     <script type="text/javascript">
         gform.addFilter('gform_merge_tags', 'add_merge_tags');
         function add_merge_tags(mergeTags, elementId, hideAllFields, excludeFieldTypes, isPrepop, option){
-            mergeTags["custom"].tags.push({ tag: '<?php echo self::$_merge_tag; ?>', label: 'Payment URL' });
+            mergeTags["custom"].tags.push({ tag: '<?php echo $this->merge_tag; ?>', label: 'Payment URL' });
 
             return mergeTags;
         }
@@ -192,15 +220,15 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	public function replace_merge_tags( $text, $form, $entry ) {
 
 		// Check that merge tag exists
-		if ( strpos( $text, self::$_merge_tag ) === false ) {
+		if ( strpos( $text, $this->merge_tag ) === false ) {
       return $text;
     }
 
-		// Get the PayPal payment URL
-		$url = self::get_payment_url($form, $entry);
+		// Get the payment URL
+		$url = $this->get_payment_url($form, $entry);
 
 		// Replace the merge tag
-		$text = str_replace( self::$_merge_tag, $url, $text );
+		$text = str_replace( $this->merge_tag, $url, $text );
 
 		return $text;
 
@@ -222,14 +250,11 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	 */
 	public function register_meta_box($meta_boxes, $entry, $form) {
 
-		// Get instance of PayPal Add-On.
-		$paypal = gf_paypal();
-
 		// Get payment status.
 		$payment_status = apply_filters( 'gform_payment_status', $entry['payment_status'], $form, $entry );
 
 		// If active feeds were found and payment status is processing, display meta box.
-		if ( $paypal->get_active_feeds( $form['id'] ) && 'Processing' === $payment_status ) {
+		if ( $this->gateway->get_active_feeds( $form['id'] ) && 'Processing' === $payment_status ) {
 
 			$meta_boxes[ 'paypal_continue_url' ] = array(
 				'title'	   => 'PayPal URL to Finish Payment',
@@ -251,7 +276,6 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	 *
 	 * @param array $args An array containing the form and entry objects.
 	 *
-	 * @uses GFForms::include_payment_addon_framework()
 	 * @uses GFFeedAddOn::get_single_submission_feed()
 	 * @uses GFPaymentAddOn::get_single_submission_feed()
 	 * @uses GFPayPal::redirect_url()
@@ -262,7 +286,7 @@ class GravityFormsPaymentContinue extends GFAddOn {
 		$form  = $args['form'];
 		$entry = $args['entry'];
 
-		$url = self::get_payment_url($form, $entry);
+		$url = $this->get_payment_url($form, $entry);
 
 		// Display link.
 		printf(
@@ -274,7 +298,7 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	}
 
 	/**
-	 * Get the PayPal URL for an entry
+	 * Get the payment URL for an entry
 	 *
 	 * @since  1.0
 	 * @access public
@@ -282,27 +306,22 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	 * @param array $form       The form object used to process the current entry.
 	 * @param array $entry      The entry currently being viewed/edited.
 	 *
-	 * @uses GFForms::include_payment_addon_framework()
 	 * @uses GFFeedAddOn::get_single_submission_feed()
 	 * @uses GFPaymentAddOn::get_submission_data()
 	 * @uses GFPayPal::redirect_url()
 	 */
 	public function get_payment_url( $form, $entry ) {
 
-		// Include Payment Add-On Framework.
-		GFForms::include_payment_addon_framework();
-
-		// Get instance of PayPal Add-On.
-		$paypal = gf_paypal();
-
 		// Get feed for entry.
-		$feed = $paypal->get_single_submission_feed( $entry, $form );
+		$feed = $this->gateway->get_single_submission_feed( $entry, $form );
 
 		// Get submission data for feed.
-		$submission_data = $paypal->get_submission_data( $feed, $form, $entry );
+		$submission_data = $this->gateway->get_submission_data( $feed, $form, $entry );
 
 		// Get redirect URL.
-		$url = $paypal->redirect_url( $feed, $submission_data, $form, $entry );
+		// Heavily dependant on PayPal.
+		// If other gateways that need coverage are introduced, they'll hopefully implement this function.
+		$url = $this->gateway->redirect_url( $feed, $submission_data, $form, $entry );
 
 		// Return URL.
 		return $url;
