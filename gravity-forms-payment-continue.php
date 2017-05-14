@@ -164,6 +164,47 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	}
 
 	/**
+	 * Return custom entry meta
+	 *
+	 * @since  1.1
+	 * @access public
+	 *
+	 * @param array $entry_meta	The existing entry meta.
+	 * @param int $form      		The current form.
+	 *
+	 *
+	 * @return array
+	 */
+	public function get_entry_meta($entry_meta, $form_id) {
+		$entry_meta['payment_url'] = [
+			'label'                      => 'Payment URL',
+      'is_numeric'                 => false,
+      'is_default_column'          => true,
+      'update_entry_meta_callback' => [ $this, 'update_payment_url_meta' ],
+		];
+	}
+
+	/**
+	 * Update payment url meta
+	 *
+	 * @since  1.1
+	 * @access public
+	 *
+	 * @param array $key	The existing entry meta.
+	 * @param int $form      		The current form.
+	 *
+	 *
+	 * @return array
+	 */
+	public function update_payment_url_meta( $key, $lead, $form ) {
+		var_dump($key);
+		var_dump($lead);
+		var_dump($form);
+		die();
+	    return ''; // return the value of the entry meta
+	}
+
+	/**
 	 * Assign active GFPaymentAddon
 	 *
 	 * @since  1.1
