@@ -7,12 +7,12 @@
  * Author URI:      https://sternerstuffdesign.com
  * Text Domain:     gravity-forms-payment-continue
  * Domain Path:     /languages
- * Version:         1.0.0
+ * Version:         1.1.0
  *
  * @package         Gravity_Forms_Payment_Continue
  */
 
-define( 'GF_PAYMENT_CONTINUE_ADDON_VERSION', '1.0' );
+define( 'GF_PAYMENT_CONTINUE_ADDON_VERSION', '1.1.0' );
 define( 'GF_PAYMENT_CONTINUE_ADDON_SLUG', 'payment-continue');
 
 // If Gravity Forms is loaded, bootstrap Gravity Forms PayPal Standard Continue.
