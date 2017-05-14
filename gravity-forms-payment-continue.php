@@ -144,6 +144,8 @@ class GravityFormsPaymentContinue extends GFAddOn {
 
 		add_filter('gform_admin_pre_render', array( $this, 'add_merge_tags') );
 
+		add_filter( 'gform_entries_column_filter', [$this, 'payment_url_entries_column_filter'], 10, 4);
+
 	}
 
 	/**
@@ -161,6 +163,38 @@ class GravityFormsPaymentContinue extends GFAddOn {
 
 		add_filter('gform_replace_merge_tags', array( $this, 'replace_merge_tags' ), 10, 3);
 
+	}
+
+	/**
+	 * Assign active GFPaymentAddon
+	 *
+	 * @since  1.1
+	 * @access public
+	 *
+	 * @uses gf_paypal()
+	 */
+	public function load_gateway() {
+		// Get instance of PayPal Add-On.
+		// Eventually this will be a conditional
+		$this->gateway = gf_paypal();
+	}
+
+	/**
+	 * See if entry has processing payment
+	 *
+	 * @since  1.1
+	 * @access public
+	 *
+	 * @param object $form The current form.
+	 * @param object $entry The current entry.
+	 *
+	 * @uses GFFeedAddOn::get_active_feeds()
+	 */
+	public function has_processing_payment($form, $entry) {
+		$payment_status = apply_filters( 'gform_payment_status', $entry['payment_status'], $form, $entry );
+
+		// If active feeds were found and payment status is processing, display meta box.
+		return ( $this->gateway->get_active_feeds( $form['id'] ) && 'Paid' !== $payment_status );
 	}
 
 	/**
@@ -182,6 +216,7 @@ class GravityFormsPaymentContinue extends GFAddOn {
       'is_default_column'          => true,
       'update_entry_meta_callback' => [ $this, 'update_payment_url_meta' ],
 		];
+		return $entry_meta;
 	}
 
 	/**
@@ -196,26 +231,38 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	 *
 	 * @return array
 	 */
-	public function update_payment_url_meta( $key, $lead, $form ) {
-		var_dump($key);
-		var_dump($lead);
-		var_dump($form);
-		die();
-	    return ''; // return the value of the entry meta
+	public function update_payment_url_meta( $key, $entry, $form ) {
+		if($this->has_processing_payment($form, $entry)) {
+	  	return $this->get_payment_url($form, $entry); // return the value of the entry meta
+		} else {
+			gform_delete_meta( $entry['id'], 'payment_url' );
+		}
 	}
 
 	/**
-	 * Assign active GFPaymentAddon
+	 * Print UX-friendly link rather than full URL in entries table.
+	 * Will not work with pre-1.1 meta
 	 *
 	 * @since  1.1
 	 * @access public
 	 *
-	 * @uses gf_paypal()
+	 * @param string $value					The entry meta.
+	 * @param int $form_id      		The current form ID.
+	 * @param string $field_id  		The meta key.
+	 * @param object $entry 				The current entry.
+	 *
+	 *
+	 * @return array
 	 */
-	public function load_gateway() {
-		// Get instance of PayPal Add-On.
-		// Eventually this will be a conditional
-		$this->gateway = gf_paypal();
+	function payment_url_entries_column_filter($value, $form_id, $field_id, $entry) {
+		if($field_id == 'payment_url' && $value) {
+			$value = sprintf(
+				'<a target="_blank" href="%s">%s</a>',
+				esc_url( $value ),
+				'Payment URL'
+			);
+		}
+		return $value;
 	}
 
 	/**
@@ -285,20 +332,15 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	 * @param array $entry      The entry currently being viewed/edited.
 	 * @param array $form       The form object used to process the current entry.
 	 *
-	 * @uses GFFeedAddOn::get_active_feeds()
 	 *
 	 * @return array
 	 */
 	public function register_meta_box($meta_boxes, $entry, $form) {
 
-		// Get payment status.
-		$payment_status = apply_filters( 'gform_payment_status', $entry['payment_status'], $form, $entry );
-
-		// If active feeds were found and payment status is processing, display meta box.
-		if ( $this->gateway->get_active_feeds( $form['id'] ) && 'Processing' === $payment_status ) {
+		if ( $this->has_processing_payment($form, $entry) ) {
 
 			$meta_boxes[ 'paypal_continue_url' ] = array(
-				'title'	   => 'PayPal URL to Finish Payment',
+				'title'	   => 'URL to Finish Payment',
 				'callback' => array( $this, 'add_details_meta_box' ),
 				'context'  => 'side',
 			);
@@ -323,11 +365,14 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	 */
 	public function add_details_meta_box( $args ) {
 
-		// Get form and entry.
-		$form  = $args['form'];
 		$entry = $args['entry'];
 
-		$url = $this->get_payment_url($form, $entry);
+		$url = rgar( $entry, 'payment_url' );
+
+		// Backwards compatibility!
+		if(!$url) {
+			$url = $this->get_payment_url($form, $entry);
+		}
 
 		// Display link.
 		printf(
