@@ -376,11 +376,6 @@ class GravityFormsPaymentContinue extends GFAddOn {
 
 		$url = rgar( $entry, 'payment_url' );
 
-		// Backwards compatibility!
-		if(!$url) {
-			$url = $this->get_payment_url($form, $entry);
-		}
-
 		// Display link.
 		printf(
 			'<a target="_blank" href="%s">%s</a>',

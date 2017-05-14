@@ -60,6 +60,7 @@ function gf_payment_continue() {
  * Run upgrades if necessary
  */
 function gf_payment_continue_upgrade() {
+	// Newer updates should go at the top
 	$available_upgrades = [
 		'1_1_0',
 	];
@@ -71,6 +72,8 @@ function gf_payment_continue_upgrade() {
 				$class_name = 'GFPaymentContinueUpgrader_'.$upgrade;
 				$upgrader = new $class_name();
 				$upgrader->upgrade();
+			} else {
+				break;
 			}
 		}
 	}
