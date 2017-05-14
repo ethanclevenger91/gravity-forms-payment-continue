@@ -13,6 +13,7 @@
  */
 
 define( 'GF_PAYMENT_CONTINUE_ADDON_VERSION', '1.0' );
+define( 'GF_PAYMENT_CONTINUE_ADDON_SLUG', 'payment-continue');
 
 // If Gravity Forms is loaded, bootstrap Gravity Forms PayPal Standard Continue.
 add_action( 'gform_loaded', array( 'GF_Payment_Continue_AddOn_Bootstrap', 'load' ), 5 );
@@ -54,3 +55,25 @@ class GF_Payment_Continue_AddOn_Bootstrap {
 function gf_payment_continue() {
 	return GravityFormsPaymentContinue::get_instance();
 }
+
+/**
+ * Run upgrades if necessary
+ */
+function gf_payment_continue_upgrade() {
+	$available_upgrades = [
+		'1_1_0',
+	];
+	$db_version = get_option('gravityformsaddon_'.GF_PAYMENT_CONTINUE_ADDON_SLUG.'_version');
+	if(!$db_version || version_compare($db_version, GF_PAYMENT_CONTINUE_ADDON_VERSION, '<')) {
+		foreach($available_upgrades as $upgrade) {
+			if(version_compare($db_version, $upgrade, '<')) {
+				require_once(plugin_dir_path(__FILE__).'includes/upgraders/upgrade_'.$upgrade.'.php');
+				$class_name = 'GFPaymentContinueUpgrader_'.$upgrade;
+				$upgrader = new $class_name();
+				$upgrader->upgrade();
+			}
+		}
+	}
+}
+
+add_action('plugins_loaded', 'gf_payment_continue_upgrade');

@@ -28,9 +28,9 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	 *
 	 * @since  1.0
 	 * @access protected
-	 * @var    string $_slug The slug used for this plugin.
+	 * @var    string $_slug The slug used for this plugin, defined from payment-continue.php
 	 */
-	protected $_slug = 'payment-continue';
+	protected $_slug = GF_PAYMENT_CONTINUE_ADDON_SLUG;
 
 	/**
 	 * Defines the main plugin file.
@@ -209,15 +209,18 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	 *
 	 * @return array
 	 */
-	public function get_entry_meta($entry_meta, $form_id) {
-		$entry_meta['payment_url'] = [
-			'label'                      => 'Payment URL',
-      'is_numeric'                 => false,
-      'is_default_column'          => true,
-      'update_entry_meta_callback' => [ $this, 'update_payment_url_meta' ],
-		];
-		return $entry_meta;
-	}
+	 public function get_entry_meta($entry_meta, $form_id) {
+		 $gateway = gf_paypal();
+		 if($gateway->get_active_feeds( $form_id )) {
+			 $entry_meta['payment_url'] = [
+				 'label'                      => 'Payment URL',
+				 'is_numeric'                 => false,
+				 'is_default_column'          => true,
+				 'update_entry_meta_callback' => [ $this, 'update_payment_url_meta' ],
+			 ];
+		 }
+		 return $entry_meta;
+ 	 }
 
 	/**
 	 * Update payment url meta
@@ -255,12 +258,16 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	 * @return array
 	 */
 	function payment_url_entries_column_filter($value, $form_id, $field_id, $entry) {
-		if($field_id == 'payment_url' && $value) {
-			$value = sprintf(
-				'<a target="_blank" href="%s">%s</a>',
-				esc_url( $value ),
-				'Payment URL'
-			);
+		if($field_id == 'payment_url') {
+			if($value) {
+				$value = sprintf(
+					'<a target="_blank" href="%s">%s</a>',
+					esc_url( $value ),
+					'Payment URL'
+				);
+			} else {
+				$value = 'Payment complete.';
+			}
 		}
 		return $value;
 	}
