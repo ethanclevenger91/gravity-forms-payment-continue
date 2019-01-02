@@ -3,8 +3,8 @@ Contributors: eclev91, travislopes
 Tags: gravity forms, paypal
 Requires at least: 4.7.4
 Requires PHP: 5.4
-Tested up to: 4.9.5
-Stable tag: 1.1.0
+Tested up to: 5.0.2
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -40,3 +40,7 @@ All other official Gravity Forms payment add-ons work on-site rather than off-si
 
 = 1.1.0 =
 * Added entry meta so payment URL is available through [Gravity Forms REST API](https://www.gravityhelp.com/documentation/article/api-functions)
+
+= 1.1.1 =
+* Bug: Fix fatal error when GF PayPal Add-On isn't installed
+* Confirm WP 5.0 compatibility

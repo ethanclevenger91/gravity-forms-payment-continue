@@ -138,11 +138,18 @@ class GravityFormsPaymentContinue extends GFAddOn {
 
 		parent::init_admin();
 
+		$meets_requirements = $this->meets_minimum_requirements();
+		if ( ! $meets_requirements['meets_requirements'] ) {
+			return;
+		}
+
 		$this->load_gateway();
 
-		add_action('gform_entry_detail_meta_boxes', array( $this, 'register_meta_box' ), 10, 3 );
+		add_action('gform_loaded', [$this, 'upgrade']);
 
-		add_filter('gform_admin_pre_render', array( $this, 'add_merge_tags') );
+		add_action('gform_entry_detail_meta_boxes', [$this, 'register_meta_box' ], 10, 3 );
+
+		add_filter('gform_admin_pre_render', [$this, 'add_merge_tags'] );
 
 		add_filter( 'gform_entries_column_filter', [$this, 'payment_url_entries_column_filter'], 10, 4);
 
@@ -159,9 +166,14 @@ class GravityFormsPaymentContinue extends GFAddOn {
 
 		parent::init();
 
+		$meets_requirements = $this->meets_minimum_requirements();
+		if ( ! $meets_requirements['meets_requirements'] ) {
+			return;
+		}
+
 		$this->load_gateway();
 
-		add_filter('gform_replace_merge_tags', array( $this, 'replace_merge_tags' ), 10, 3);
+		add_filter('gform_replace_merge_tags', [$this, 'replace_merge_tags'], 10, 3);
 
 	}
 
@@ -285,7 +297,9 @@ class GravityFormsPaymentContinue extends GFAddOn {
 	public function add_merge_tags( $form ) {
 		?>
     <script type="text/javascript">
-        gform.addFilter('gform_merge_tags', 'add_merge_tags');
+    	if(typeof gform !== 'undefined') {
+        	gform.addFilter('gform_merge_tags', 'add_merge_tags');
+        }
         function add_merge_tags(mergeTags, elementId, hideAllFields, excludeFieldTypes, isPrepop, option){
             mergeTags["custom"].tags.push({ tag: '<?php echo $this->merge_tag; ?>', label: 'Payment URL' });
 
@@ -413,5 +427,31 @@ class GravityFormsPaymentContinue extends GFAddOn {
 
 		// Return URL.
 		return $url;
+	}
+
+	/**
+	 * Run upgrades if necessary
+	 * 
+	 * @since  1.1.1
+	 * @access public
+	 */
+	public function gf_payment_continue_upgrade() {
+		// Newer updates should go at the top
+		$available_upgrades = [
+			'1_1_0',
+		];
+		$db_version = get_option('gravityformsaddon_'.GF_PAYMENT_CONTINUE_ADDON_SLUG.'_version');
+		if(!$db_version || version_compare($db_version, GF_PAYMENT_CONTINUE_ADDON_VERSION, '<')) {
+			foreach($available_upgrades as $upgrade) {
+				if(version_compare($db_version, $upgrade, '<')) {
+					require_once(plugin_dir_path(__FILE__).'includes/upgraders/upgrade_'.$upgrade.'.php');
+					$class_name = 'GFPaymentContinueUpgrader_'.$upgrade;
+					$upgrader = new $class_name();
+					$upgrader->upgrade();
+				} else {
+					break;
+				}
+			}
+		}
 	}
 }
