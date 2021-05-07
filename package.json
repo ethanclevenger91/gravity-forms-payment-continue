@@ -4,7 +4,7 @@
   "main": "Gruntfile.js",
   "author": "Sterner Stuff Design",
   "devDependencies": {
-    "grunt": "^1.0.0",
+    "grunt": "^1.3.0",
     "grunt-wp-i18n": "^1.0.0",
     "grunt-wp-readme-to-markdown": "^2.0.0"
   }
